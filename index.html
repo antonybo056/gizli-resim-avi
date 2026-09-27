@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gizli Resim Avı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap">
+<style>
+  /* Tek görünüm: gece müzesi — mürekkep moru zemin, lacivert kart sırtları, mercan vurgu */
+  :root{
+    color-scheme: dark;
+    --bg:#161226;
+    --bg-glow:#2a2150;
+    --panel:#201a34;
+    --panel-2:#2a2342;
+    --line:#3b3259;
+    --text:#f4f0fb;
+    --muted:#a9a1c6;
+    --coral:#ff8fa3;
+    --coral-hi:#ffa8b8;
+    --coral-ink:#3b0c17;
+    --gold:#f5c96a;
+    --back-1:#3d4396;
+    --back-2:#262a6a;
+    --face:#fbf8ff;
+    --face-edge:#e4def4;
+    --ok:#7fe0b6;
+    --bad:#ff7b7b;
+    --display:"Fredoka","Segoe UI",system-ui,sans-serif;
+    --body:"Nunito","Segoe UI",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+    --emoji:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;
+  }
+  [hidden]{display:none!important}
+  html{height:100%;box-sizing:border-box}
+  *,*::before,*::after{box-sizing:inherit}
+  body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;overflow:hidden}
+  button{font:inherit;color:inherit;cursor:pointer}
+  :focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+
+  .app{height:100%;display:flex;flex-direction:column}
+
+  /* ---------- Üst çubuk ---------- */
+  .bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:3}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:-.01em;white-space:nowrap}
+  .brand-mark{display:grid;grid-template-columns:repeat(2,11px);gap:3px}
+  .brand-mark i{width:11px;height:14px;border-radius:3px;background:var(--back-1);box-shadow:inset 0 0 0 1.5px rgba(245,201,106,.6)}
+  .brand-mark i:nth-child(2),.brand-mark i:nth-child(3){background:var(--coral);box-shadow:none}
+  .stats{display:flex;gap:8px}
+  .stat{display:flex;flex-direction:column;gap:1px;padding:5px 12px 6px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;min-width:86px}
+  .stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:800}
+  .stat .v{font-family:var(--mono);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;line-height:1.2}
+  .dots{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;max-width:120px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.12);transition:background .3s}
+  .dots i.on{background:var(--coral)}
+  .tools{display:flex;gap:6px;margin-left:auto}
+  .tool{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;font-size:14px;font-weight:700;transition:background .15s,border-color .15s}
+  .tool svg{width:17px;height:17px;flex:none}
+  .tool:hover{background:var(--panel-2)}
+  .tool[aria-pressed="true"]{border-color:var(--coral);color:var(--coral-hi)}
+  .tool.strong{background:var(--coral);border-color:var(--coral);color:var(--coral-ink)}
+  .tool.strong:hover{background:var(--coral-hi)}
+
+  /* ---------- Sahne & tahta ---------- */
+  .stage{flex:1;min-height:0;position:relative;overflow:hidden;display:grid;place-items:center;padding:18px 16px;
+    background:radial-gradient(ellipse 70% 60% at 50% 45%, var(--bg-glow), var(--bg) 75%)}
+  .board-wrap{position:relative}
+  .board{position:relative;display:grid;gap:var(--gap,8px);width:100%;height:100%;padding:var(--gap,8px);border-radius:18px;background:rgba(10,8,22,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05),0 30px 70px rgba(0,0,0,.45)}
+  .cell{position:relative;container-type:size;perspective:900px}
+  .tile{position:absolute;inset:0;border-radius:10px;background-repeat:no-repeat;opacity:0;transform:scale(.92);transition:opacity .5s ease,transform .5s ease}
+  .cell.found .tile{opacity:1;transform:none}
+  .card{position:absolute;inset:0;border:0;padding:0;background:none;border-radius:10px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.3,.7,.3,1.1),opacity .45s ease,scale .45s ease}
+  .card.up{transform:rotateY(180deg)}
+  .card.gone{opacity:0;scale:1.12;pointer-events:none}
+  .card.shake{animation:shake .38s ease}
+  @keyframes shake{0%,100%{translate:0}20%{translate:-6px}40%{translate:6px}60%{translate:-4px}80%{translate:3px}}
+  .face{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center}
+  .back{
+    background:
+      radial-gradient(circle at 50% 50%, rgba(245,201,106,.18) 0 18%, transparent 19%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.06) 0 6px, transparent 6px 14px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.06) 0 6px, transparent 6px 14px),
+      linear-gradient(160deg, var(--back-1), var(--back-2));
+    box-shadow:inset 0 0 0 2px rgba(245,201,106,.45), inset 0 0 0 6px var(--back-2), inset 0 0 0 7px rgba(245,201,106,.25), 0 6px 14px rgba(0,0,0,.35);
+    transition:filter .15s}
+  .back::after{content:"?";font-family:var(--display);font-weight:700;color:var(--gold);font-size:30cqmin;opacity:.85}
+  .card:hover .back{filter:brightness(1.15)}
+  .card:focus-visible{outline:none}
+  .card:focus-visible .back{box-shadow:inset 0 0 0 3px var(--coral), 0 0 0 3px var(--coral)}
+  .front{transform:rotateY(180deg);background:var(--face);box-shadow:inset 0 0 0 2px var(--face-edge), 0 6px 14px rgba(0,0,0,.35)}
+  .front span{font-family:var(--emoji);font-size:52cqmin;line-height:1;filter:drop-shadow(0 3px 2px rgba(40,20,80,.18))}
+  .card.miss .front{box-shadow:inset 0 0 0 3px var(--bad), 0 6px 14px rgba(0,0,0,.35)}
+  .card.hit .front{box-shadow:inset 0 0 0 3px var(--ok), 0 6px 14px rgba(0,0,0,.35)}
+
+  .reveal{position:absolute;inset:0;border-radius:18px;background-size:cover;background-position:center;opacity:0;pointer-events:none;transition:opacity 1.2s ease;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+  .done .reveal{opacity:1}
+
+  /* ---------- Katmanlar ---------- */
+  .overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(10,8,22,.62);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);overflow:auto;z-index:4}
+  .overlay.soft{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;place-items:end center;pointer-events:none}
+  .overlay.soft .card-ui{pointer-events:auto}
+  .card-ui{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.5);padding:22px}
+
+  .setup{max-width:900px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:26px}
+  .drop{position:relative;display:grid;place-items:center;min-height:230px;padding:12px;border:1.5px dashed rgba(255,255,255,.18);border-radius:16px;background:rgba(0,0,0,.25);cursor:pointer;transition:border-color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--coral);background:rgba(255,143,163,.06)}
+  .drop img{display:block;max-width:100%;max-height:340px;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .drop-hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);padding:6px 12px;border-radius:999px;background:rgba(22,18,38,.9);font-size:12.5px;font-weight:700;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s}
+  .drop:hover .drop-hint,.drop.over .drop-hint{opacity:1}
+  .pv-meta{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:13px;color:var(--muted)}
+  .pv-meta span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .side{display:flex;flex-direction:column;gap:16px}
+  .eyebrow{margin:0;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--coral)}
+  .side h1{margin:4px 0 0;font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
+  .side p.lead{margin:6px 0 0;color:var(--muted);max-width:44ch}
+  .field{display:flex;flex-direction:column;gap:8px}
+  .label{font-size:11.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:800}
+  .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .thumb{padding:0;border:2px solid var(--line);border-radius:10px;overflow:hidden;background:none;width:68px;height:46px}
+  .thumb img{display:block;width:100%;height:100%;object-fit:cover}
+  .thumb[aria-pressed="true"]{border-color:var(--coral)}
+  .seg{display:grid;gap:6px}
+  .seg.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .seg.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .seg button{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 4px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);transition:border-color .15s,background .15s}
+  .seg button b{font-weight:800;font-size:14px}
+  .seg button span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .seg button .emo{font-family:var(--emoji);font-size:18px;color:inherit;letter-spacing:2px}
+  .seg button[aria-checked="true"]{border-color:var(--coral);background:rgba(255,143,163,.12)}
+  .seg button[aria-checked="true"] span{color:var(--coral-hi)}
+  .best{font-size:13px;color:var(--muted);padding:9px 12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}
+  .best b{color:var(--text);font-family:var(--mono)}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);font-weight:700;font-size:14px;transition:background .15s,border-color .15s}
+  .btn:hover{border-color:var(--muted)}
+  .btn svg{width:17px;height:17px}
+  .btn.coral{background:var(--coral);border-color:var(--coral);color:var(--coral-ink)}
+  .btn.coral:hover{background:var(--coral-hi);border-color:var(--coral-hi)}
+  .btn.big{padding:13px 22px;font-size:16px;font-weight:800;flex:1}
+
+  .result{max-width:460px;margin-bottom:6px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:22px}
+  .result h2{margin:0;font-family:var(--display);font-weight:700;font-size:28px;line-height:1.1}
+  .result p{margin:0;color:var(--muted)}
+  .results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+  .results div{padding:9px 6px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}
+  .results .k{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:800}
+  .results .v{display:block;font-family:var(--mono);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+  .record{font-size:13.5px;padding:5px 12px;border-radius:999px;background:rgba(127,224,182,.12);color:var(--ok);font-weight:700}
+  .result .actions{width:100%}
+  .result .btn{flex:1}
+  .pill{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:4}
+
+  .toast{position:absolute;left:50%;bottom:18px;transform:translate(-50%,10px);max-width:calc(100% - 32px);padding:9px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:6}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width:820px){ .setup{grid-template-columns:minmax(0,1fr);gap:18px} .drop{min-height:170px} }
+  @media (max-width:720px){
+    .tool .lbl{display:none}
+    .stats{flex:1}
+    .stat{flex:1;min-width:0}
+    .brand{font-size:18px}
+    .board{--gap:5px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition-duration:.01s!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Gizli Resim Avı</span></div>
+    <div class="stats">
+      <div class="stat"><span class="k">Süre</span><span class="v" id="sTime">00:00</span></div>
+      <div class="stat"><span class="k">Hamle</span><span class="v" id="sMoves">0</span></div>
+      <div class="stat"><span class="k">Bulunan</span><span class="v" id="sFound">0/0</span><span class="dots" id="sDots"></span></div>
+    </div>
+    <div class="tools">
+      <button class="tool" id="bSound" aria-pressed="true" title="Sesleri aç/kapat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path id="soundWave" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg><span class="lbl">Ses</span></button>
+      <button class="tool" id="bRestart" title="Aynı ayarlarla yeniden karıştır">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="lbl">Karıştır</span></button>
+      <button class="tool strong" id="bNew">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Yeni oyun</span></button>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="board-wrap" id="wrap">
+      <div class="board" id="board" aria-label="Kartlar"></div>
+      <div class="reveal" id="reveal"></div>
+    </div>
+
+    <!-- Kurulum -->
+    <section class="overlay" id="setupBox" hidden aria-labelledby="setupTitle">
+      <div class="card-ui setup">
+        <div>
+          <div class="drop" id="drop" tabindex="0" role="button" aria-label="Gizli resmi yükle: tıkla ya da dosyayı buraya bırak">
+            <img id="pvImg" alt="Seçili gizli resim">
+            <div class="drop-hint">Tıkla veya resmi buraya bırak</div>
+          </div>
+          <div class="pv-meta"><span id="srcName">Örnek · Gün batımı</span><span id="srcSize"></span></div>
+        </div>
+        <div class="side">
+          <div>
+            <p class="eyebrow">Yeni oyun</p>
+            <h1 id="setupTitle">Çiftleri bul, arkadaki resmi ortaya çıkar.</h1>
+            <p class="lead">Her eşleşen çift kalkınca resmin bir parçası açılır. Tüm çiftleri bulunca resmin tamamı görünür.</p>
+          </div>
+          <div class="field">
+            <span class="label">Gizli resim</span>
+            <div class="row">
+              <button class="btn" id="bUpload" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>Resim yükle</button>
+              <input type="file" id="file" accept="image/*" hidden>
+              <button class="thumb" data-sample="sunset" aria-pressed="true" title="Örnek: Gün batımı" aria-label="Örnek resim: Gün batımı"><img alt=""></button>
+              <button class="thumb" data-sample="mosaic" aria-pressed="false" title="Örnek: Mozaik" aria-label="Örnek resim: Mozaik"><img alt=""></button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">Kart resimleri</span>
+            <div class="seg three" id="themes" role="radiogroup" aria-label="Kart resimleri"></div>
+          </div>
+          <div class="field">
+            <span class="label">Zorluk</span>
+            <div class="seg four" id="levels" role="radiogroup" aria-label="Zorluk"></div>
+          </div>
+          <div class="best" id="bestInfo"></div>
+          <div class="actions">
+            <button class="btn" id="bResume" hidden>Oyuna dön</button>
+            <button class="btn coral big" id="bStart">Oyunu Başlat</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Kazandın -->
+    <section class="overlay soft" id="winBox" hidden>
+      <div class="card-ui result">
+        <h2>Resmi buldun!</h2>
+        <p id="winLine">Bütün çiftler eşleşti.</p>
+        <div class="results">
+          <div><span class="k">Süre</span><span class="v" id="wTime">00:00</span></div>
+          <div><span class="k">Hamle</span><span class="v" id="wMoves">0</span></div>
+          <div><span class="k">İsabet</span><span class="v" id="wAcc">%0</span></div>
+        </div>
+        <div class="record" id="wRecord" hidden></div>
+        <div class="actions">
+          <button class="btn" id="bLook">Resme bak</button>
+          <button class="btn" id="bSetup">Yeni resim</button>
+          <button class="btn coral" id="bAgain">Tekrar oyna</button>
+        </div>
+      </div>
+    </section>
+    <button class="btn coral pill" id="bBack" hidden>Sonuçları göster</button>
+
+    <div class="toast" id="toast" role="status"></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = s => document.querySelector(s);
+
+  /* ================= Ayarlar ================= */
+  const LEVELS = [
+    { id: "kolay", name: "Kolay", cols: 4, rows: 3 },
+    { id: "orta",  name: "Orta",  cols: 4, rows: 4 },
+    { id: "zor",   name: "Zor",   cols: 6, rows: 4 },
+    { id: "uzman", name: "Uzman", cols: 6, rows: 5 },
+  ];
+  const THEMES = [
+    { id: "hayvan", name: "Hayvanlar", icons: ["🐶","🐱","🦊","🐻","🐼","🐨","🐯","🦁","🐸","🐵","🐧","🐤","🦉","🐙","🦋","🐢","🐬","🦄"] },
+    { id: "meyve",  name: "Meyveler",  icons: ["🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥕","🌽","🥑"] },
+    { id: "doga",   name: "Doğa & Uzay", icons: ["🌵","🌻","🌈","⭐","🌙","☀️","🍄","🌲","🌊","❄️","🔥","⚡","🌍","🪐","🚀","🛸","☄️","🌋"] },
+  ];
+  const CARD_RATIO = 3 / 4;   // kart genişlik / yükseklik
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let level = clamp(store.get("gra-level", 1), 0, LEVELS.length - 1);
+  let theme = clamp(store.get("gra-theme", 0), 0, THEMES.length - 1);
+  let soundOn = store.get("gra-sound", true);
+
+  function clamp(v, a, b) { v = Number(v) || 0; return v < a ? a : v > b ? b : v; }
+  function fmtTime(ms) {
+    const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60;
+    const mm = String(m).padStart(2, "0"), ss = String(s).padStart(2, "0");
+    return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  }
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ================= Örnek resimler (koddan üretilir) ================= */
+  function sampleSunset() {
+    const W = 1500, H = 1000, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const x = cv.getContext("2d"), rnd = mulberry32(7), hz = H * 0.62;
+    const sky = x.createLinearGradient(0, 0, 0, hz);
+    sky.addColorStop(0, "#131a47"); sky.addColorStop(0.38, "#4a2a6c"); sky.addColorStop(0.72, "#d6617a"); sky.addColorStop(1, "#ffc56f");
+    x.fillStyle = sky; x.fillRect(0, 0, W, hz);
+    for (let i = 0; i < 260; i++) {
+      const sx = rnd() * W, sy = rnd() * hz * 0.55;
+      x.globalAlpha = (1 - sy / (hz * 0.55)) * (0.3 + 0.7 * rnd()); x.fillStyle = "#fff";
+      x.beginPath(); x.arc(sx, sy, rnd() * 1.7 + 0.5, 0, 7); x.fill();
+    }
+    x.globalAlpha = 1;
+    const mx = W * 0.15, my = H * 0.15;
+    x.save(); x.beginPath(); x.rect(0, 0, W, H); x.arc(mx + 17, my - 9, 36, 0, Math.PI * 2, true); x.clip();
+    x.fillStyle = "#fbf1d2"; x.beginPath(); x.arc(mx, my, 40, 0, 7); x.fill(); x.restore();
+    const sx = W * 0.64, sy = hz - 70, sr = 150;
+    let g = x.createRadialGradient(sx, sy, sr * 0.6, sx, sy, sr * 2.6);
+    g.addColorStop(0, "rgba(255,210,130,.45)"); g.addColorStop(1, "rgba(255,160,120,0)");
+    x.fillStyle = g; x.fillRect(0, 0, W, hz);
+    g = x.createLinearGradient(0, sy - sr, 0, sy + sr);
+    g.addColorStop(0, "#fff3a6"); g.addColorStop(0.6, "#ffb05a"); g.addColorStop(1, "#ff7a4a");
+    x.save(); x.beginPath(); x.arc(sx, sy, sr, 0, Math.PI * 2); x.clip();
+    x.fillStyle = g; x.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
+    x.fillStyle = sky;
+    for (let i = 0; i < 7; i++) x.fillRect(sx - sr, sy - 10 + i * 24, sr * 2, 3 + i * 2.2);
+    x.restore();
+    const cloud = (cx, cy, w, col) => {
+      x.fillStyle = col;
+      for (let i = 0; i < 6; i++) { x.beginPath(); x.ellipse(cx + (i - 2.5) * w * 0.17, cy + Math.sin(i * 1.7) * 6, w * 0.2, w * 0.05, 0, 0, 7); x.fill(); }
+    };
+    cloud(W * 0.3, H * 0.3, 420, "rgba(255,160,190,.32)");
+    cloud(W * 0.82, H * 0.22, 360, "rgba(255,190,210,.25)");
+    cloud(W * 0.48, H * 0.44, 300, "rgba(120,60,130,.35)");
+    const ridge = (base, amp, col, seed, freq) => {
+      const r = mulberry32(seed); x.fillStyle = col; x.beginPath(); x.moveTo(0, H);
+      for (let i = 0; i <= 120; i++) {
+        const n = Math.abs(Math.sin(i * freq + seed)) * 0.6 + Math.abs(Math.sin(i * freq * 2.7 + seed * 3)) * 0.3 + r() * 0.08;
+        x.lineTo(i / 120 * W, base - amp * n);
+      }
+      x.lineTo(W, H); x.closePath(); x.fill();
+    };
+    ridge(hz, 250, "#8a4a7e", 2, 0.045); ridge(hz, 170, "#5c3170", 5, 0.07); ridge(hz, 95, "#34214f", 9, 0.11);
+    g = x.createLinearGradient(0, hz, 0, H); g.addColorStop(0, "#43305f"); g.addColorStop(1, "#0d1330");
+    x.fillStyle = g; x.fillRect(0, hz, W, H - hz);
+    for (let i = 0; i < 90; i++) {
+      const t = Math.pow(rnd(), 1.4), yy = hz + 6 + t * (H - hz - 10), ww = (1 - t) * 230 * (0.4 + rnd()) + 20;
+      x.fillStyle = `rgba(255,${170 + rnd() * 50 | 0},110,${0.55 * (1 - t) + 0.08})`;
+      x.fillRect(sx - ww / 2 + (rnd() - 0.5) * 60, yy, ww, 2 + rnd() * 3);
+    }
+    x.fillStyle = "#0b0e22";
+    x.beginPath(); x.moveTo(0, hz + 40); x.bezierCurveTo(W * 0.18, hz + 30, W * 0.3, H * 0.84, W * 0.42, H); x.lineTo(0, H); x.fill();
+    x.beginPath(); x.moveTo(W, hz + 110); x.bezierCurveTo(W * 0.9, hz + 120, W * 0.84, H * 0.9, W * 0.78, H); x.lineTo(W, H); x.fill();
+    const pine = (px, py, h) => {
+      for (let i = 0; i < 4; i++) {
+        const w = h * (0.34 - i * 0.06), y0 = py - h * (0.2 + i * 0.22);
+        x.beginPath(); x.moveTo(px, y0 - h * 0.34); x.lineTo(px - w, y0 + h * 0.1); x.lineTo(px + w, y0 + h * 0.1); x.fill();
+      }
+      x.fillRect(px - h * 0.03, py - h * 0.2, h * 0.06, h * 0.2);
+    };
+    [[40,hz+60,230],[120,hz+80,300],[205,hz+95,210],[290,hz+120,260],[360,hz+160,180],[W-40,hz+140,260],[W-120,hz+150,200],[W-190,hz+175,240]].forEach(a => pine(...a));
+    const kx = 410, ky = hz + 215;
+    x.fillStyle = "#15162e"; x.fillRect(kx, ky - 60, 110, 60);
+    x.beginPath(); x.moveTo(kx - 14, ky - 58); x.lineTo(kx + 55, ky - 110); x.lineTo(kx + 124, ky - 58); x.fill();
+    x.fillStyle = "#ffcf6b"; x.fillRect(kx + 20, ky - 44, 22, 20); x.fillRect(kx + 68, ky - 44, 22, 20);
+    x.fillStyle = "rgba(255,207,107,.25)"; x.fillRect(kx + 18, ky + 20, 26, 60); x.fillRect(kx + 66, ky + 20, 26, 60);
+    x.strokeStyle = "#2a1b3b"; x.lineWidth = 3; x.lineCap = "round";
+    [[900,260,18],[950,240,14],[990,275,12],[860,290,10]].forEach(([bx, by, s]) => {
+      x.beginPath(); x.moveTo(bx - s, by - s * 0.4); x.quadraticCurveTo(bx - s * 0.4, by - s * 0.6, bx, by);
+      x.quadraticCurveTo(bx + s * 0.4, by - s * 0.6, bx + s, by - s * 0.4); x.stroke();
+    });
+    return cv;
+  }
+  function sampleMosaic() {
+    const W = 1400, H = 1000, T = 200, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const x = cv.getContext("2d"), rnd = mulberry32(21);
+    const pal = ["#1d3557","#264653","#2a9d8f","#8ecae6","#e9c46a","#f4a261","#e76f51","#f1faee","#b5838d","#6d597a"];
+    const pick = ex => { let c; do { c = pal[rnd() * pal.length | 0]; } while (ex.includes(c)); return c; };
+    for (let r = 0; r < H / T; r++) for (let c = 0; c < W / T; c++) {
+      const X = c * T, Y = r * T, bg = pick([]), fg = pick([bg]), ac = pick([bg, fg]);
+      x.fillStyle = bg; x.fillRect(X, Y, T, T); x.fillStyle = fg;
+      const type = rnd() * 6 | 0, q = rnd() * 4 | 0;
+      x.save(); x.beginPath(); x.rect(X, Y, T, T); x.clip(); x.beginPath();
+      if (type === 0) { x.arc(X + T/2, Y + T/2, T * 0.36, 0, 7); x.fill(); x.fillStyle = ac; x.beginPath(); x.arc(X + T/2, Y + T/2, T * 0.14, 0, 7); x.fill(); }
+      else if (type === 1) { const cx = X + (q & 1) * T, cy = Y + (q >> 1) * T; x.moveTo(cx, cy); x.arc(cx, cy, T, 0, 7); x.fill(); }
+      else if (type === 2) { const a = q * Math.PI / 2; x.arc(X + T/2 + Math.cos(a) * T/2, Y + T/2 + Math.sin(a) * T/2, T/2, 0, 7); x.fill(); }
+      else if (type === 3) { const k = [[X,Y],[X+T,Y],[X+T,Y+T],[X,Y+T]]; x.moveTo(...k[q]); x.lineTo(...k[(q+1)%4]); x.lineTo(...k[(q+2)%4]); x.fill(); }
+      else if (type === 4) { for (let i = 0; i < 4; i++) q & 1 ? x.fillRect(X + i * T/4, Y, T/8, T) : x.fillRect(X, Y + i * T/4, T, T/8); }
+      else { for (let i = 3; i > 0; i--) { x.fillStyle = i % 2 ? fg : ac; x.beginPath(); x.arc(X + T/2, Y + T/2, T * 0.14 * i, 0, 7); x.fill(); } }
+      x.restore();
+      if (rnd() < 0.35) { x.fillStyle = ac; x.beginPath(); x.arc(X + T * (0.2 + rnd() * 0.6), Y + T * (0.2 + rnd() * 0.6), 9, 0, 7); x.fill(); }
+    }
+    return cv;
+  }
+
+  /* ================= Gizli resim ================= */
+  const samples = {};
+  let source = null, sourceName = "", coverUrl = "";
+
+  function normalize(img) {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const k = Math.min(1, 2000 / Math.max(w, h));
+    const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    const x = c.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  }
+  function setSource(canvas, name, sampleKey) {
+    source = canvas; sourceName = name;
+    document.querySelectorAll(".thumb").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sample === sampleKey)));
+    $("#pvImg").src = canvas.toDataURL("image/jpeg", 0.85);
+    $("#srcName").textContent = name;
+    $("#srcSize").textContent = `${canvas.width} × ${canvas.height}`;
+  }
+  function loadFile(file) {
+    if (!file || !/^image\//.test(file.type)) { toast("Bu dosya bir resim değil. JPG, PNG, WEBP veya GIF seç."); return; }
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { setSource(normalize(img), file.name || "Yapıştırılan resim", null); URL.revokeObjectURL(url); showSetup(); toast("Gizli resim hazır. Oyunu başlatabilirsin."); };
+    img.onerror = () => { URL.revokeObjectURL(url); toast("Resim açılamadı. Başka bir dosya dene."); };
+    img.src = url;
+  }
+  // Resmi tahtanın oranına göre ortadan kırpıp (cover) tek bir görüntüye çevirir
+  function makeCover(aspect) {
+    const sw = source.width, sh = source.height;
+    let cw = sw, ch = sw / aspect;
+    if (ch > sh) { ch = sh; cw = sh * aspect; }
+    const out = document.createElement("canvas");
+    const k = Math.min(1, 1600 / Math.max(cw, ch));
+    out.width = Math.round(cw * k); out.height = Math.round(ch * k);
+    out.getContext("2d").drawImage(source, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, out.width, out.height);
+    return out.toDataURL("image/jpeg", 0.9);
+  }
+
+  /* ================= Oyun ================= */
+  const board = $("#board"), wrap = $("#wrap"), stage = $("#stage");
+  let G = null;
+
+  function newGame() {
+    const L = LEVELS[level], T = THEMES[theme];
+    // dikey ekranda ızgarayı çevir
+    const r = stage.getBoundingClientRect();
+    let cols = L.cols, rows = L.rows;
+    if (r.height > r.width * 1.1 && cols > rows) [cols, rows] = [rows, cols];
+    const pairs = cols * rows / 2;
+    const icons = shuffle(T.icons.slice()).slice(0, pairs);
+    const deck = shuffle(icons.flatMap((ic, i) => [{ sym: i, icon: ic }, { sym: i, icon: ic }]));
+    G = { level, theme, cols, rows, pairs, deck, open: [], lock: false, moves: 0, found: 0,
+          elapsed: 0, t0: 0, running: false, done: false, misses: 0 };
+
+    coverUrl = makeCover((cols * CARD_RATIO) / rows);
+    $("#reveal").style.backgroundImage = `url("${coverUrl}")`;
+    wrap.classList.remove("done");
+    board.style.gridTemplateColumns = `repeat(${cols}, minmax(0,1fr))`;
+    board.style.gridTemplateRows = `repeat(${rows}, minmax(0,1fr))`;
+    board.innerHTML = "";
+    deck.forEach((c, i) => {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.innerHTML = `<div class="tile"></div>
+        <button class="card" aria-label="Kapalı kart ${i + 1}">
+          <span class="face back"></span><span class="face front"><span>${c.icon}</span></span>
+        </button>`;
+      c.cell = cell; c.btn = cell.querySelector(".card"); c.tile = cell.querySelector(".tile"); c.i = i;
+      c.btn.addEventListener("click", () => flip(c));
+      board.appendChild(cell);
+    });
+    renderDots();
+    hideOverlays();
+    fitBoard();
+    updateHud();
+  }
+
+  function fitBoard() {
+    if (!G) return;
+    const cs = getComputedStyle(stage);
+    const aw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const ratio = (G.cols * CARD_RATIO) / G.rows;
+    let w = Math.min(aw, ah * ratio), h = w / ratio;
+    wrap.style.width = Math.floor(w) + "px"; wrap.style.height = Math.floor(h) + "px";
+    // her karonun altına resmin kendi parçasını yerleştir
+    const bw = board.clientWidth, bh = board.clientHeight;
+    for (const c of G.deck) {
+      c.tile.style.backgroundImage = `url("${coverUrl}")`;
+      c.tile.style.backgroundSize = `${bw}px ${bh}px`;
+      c.tile.style.backgroundPosition = `${-c.cell.offsetLeft}px ${-c.cell.offsetTop}px`;
+    }
+  }
+
+  function flip(c) {
+    if (!G || G.done || G.lock || c.matched || G.open.includes(c)) return;
+    audio();
+    if (!G.running) { G.running = true; G.t0 = performance.now(); }
+    c.btn.classList.add("up"); c.btn.setAttribute("aria-label", `Açık kart: ${c.icon}`);
+    G.open.push(c);
+    play("flip");
+    if (G.open.length < 2) return;
+    G.moves++;
+    const [a, b] = G.open;
+    if (a.sym === b.sym) {
+      G.open = [];
+      a.matched = b.matched = true;
+      G.found++;
+      [a, b].forEach(x => x.btn.classList.add("hit"));
+      play("match");
+      setTimeout(() => {
+        [a, b].forEach(x => { x.btn.classList.add("gone"); x.cell.classList.add("found"); x.btn.tabIndex = -1; });
+        if (G.found === G.pairs && !G.done) win();
+      }, 520);
+    } else {
+      G.lock = true; G.misses++;
+      setTimeout(() => { [a, b].forEach(x => x.btn.classList.add("miss", "shake")); play("miss"); }, 380);
+      setTimeout(() => {
+        [a, b].forEach(x => { x.btn.classList.remove("up", "miss", "shake"); x.btn.setAttribute("aria-label", "Kapalı kart"); });
+        G.open = []; G.lock = false;
+      }, 1050);
+    }
+    updateHud();
+  }
+
+  function elapsed() { return G ? G.elapsed + (G.running ? performance.now() - G.t0 : 0) : 0; }
+  function stopClock() { if (G && G.running) { G.elapsed = elapsed(); G.running = false; } }
+  function updateHud() {
+    if (!G) return;
+    $("#sTime").textContent = fmtTime(elapsed());
+    $("#sMoves").textContent = G.moves;
+    $("#sFound").textContent = `${G.found}/${G.pairs}`;
+    [...$("#sDots").children].forEach((d, i) => d.classList.toggle("on", i < G.found));
+  }
+  function renderDots() {
+    $("#sDots").innerHTML = "<i></i>".repeat(G.pairs);
+  }
+  setInterval(() => { if (G && G.running) $("#sTime").textContent = fmtTime(elapsed()); }, 250);
+
+  function win() {
+    stopClock(); G.done = true;
+    updateHud();
+    wrap.classList.add("done");
+    play("win");
+    const L = LEVELS[G.level], all = store.get("gra-best", {}), prev = all[L.id];
+    const acc = Math.round(G.pairs / G.moves * 100);
+    $("#wTime").textContent = fmtTime(G.elapsed);
+    $("#wMoves").textContent = G.moves;
+    $("#wAcc").textContent = "%" + acc;
+    $("#winLine").textContent = `${L.name} seviyesi · ${G.pairs} çift · ${G.misses} yanlış deneme`;
+    const notes = [];
+    if (!prev) notes.push("Bu seviyedeki ilk derecen kaydedildi");
+    else {
+      if (G.elapsed < prev.time) notes.push("Yeni süre rekoru");
+      if (G.moves < prev.moves) notes.push("En az hamle rekoru");
+    }
+    all[L.id] = prev ? { time: Math.min(prev.time, G.elapsed), moves: Math.min(prev.moves, G.moves) } : { time: G.elapsed, moves: G.moves };
+    store.set("gra-best", all);
+    $("#wRecord").hidden = !notes.length; $("#wRecord").textContent = notes.join(" · ");
+    // önce resim tamamen görünsün, sonra sonuç kartı gelsin
+    setTimeout(() => { if (G.done) { $("#winBox").hidden = false; $("#bAgain").focus(); } }, 1700);
+  }
+
+  /* ================= Katmanlar ================= */
+  function hideOverlays() { $("#setupBox").hidden = true; $("#winBox").hidden = true; $("#bBack").hidden = true; }
+  function showSetup() {
+    if (!$("#setupBox").hidden) return;
+    stopClock();
+    $("#bResume").hidden = !(G && !G.done);
+    $("#winBox").hidden = true; $("#bBack").hidden = true;
+    renderChoices();
+    $("#setupBox").hidden = false;
+  }
+  function renderChoices() {
+    const lv = $("#levels"); lv.innerHTML = "";
+    LEVELS.forEach((L, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(i === level));
+      b.innerHTML = `<b>${L.name}</b><span>${L.cols * L.rows / 2} çift</span>`;
+      b.onclick = () => { level = i; store.set("gra-level", i); renderChoices(); };
+      lv.appendChild(b);
+    });
+    const th = $("#themes"); th.innerHTML = "";
+    THEMES.forEach((T, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(i === theme));
+      b.innerHTML = `<span class="emo">${T.icons.slice(0, 3).join("")}</span><b>${T.name}</b>`;
+      b.onclick = () => { theme = i; store.set("gra-theme", i); renderChoices(); };
+      th.appendChild(b);
+    });
+    const L = LEVELS[level], rec = store.get("gra-best", {})[L.id];
+    $("#bestInfo").innerHTML = rec
+      ? `En iyi derecen (${L.name}): <b>${fmtTime(rec.time)}</b> · <b>${rec.moves}</b> hamle`
+      : `${L.name} seviyesinde henüz derecen yok. İlkini sen koy.`;
+  }
+
+  $("#bNew").onclick = showSetup;
+  $("#bRestart").onclick = () => newGame();
+  $("#bStart").onclick = () => { audio(); newGame(); };
+  $("#bResume").onclick = () => {
+    $("#setupBox").hidden = true;
+    if (G && !G.done && (G.moves > 0 || G.open.length)) { G.running = true; G.t0 = performance.now(); }
+  };
+  $("#bAgain").onclick = () => newGame();
+  $("#bSetup").onclick = showSetup;
+  $("#bLook").onclick = () => { $("#winBox").hidden = true; $("#bBack").hidden = false; };
+  $("#bBack").onclick = () => { $("#bBack").hidden = true; $("#winBox").hidden = false; };
+  $("#bSound").onclick = () => { soundOn = !soundOn; store.set("gra-sound", soundOn); syncSound(); if (soundOn) { audio(); play("flip"); } };
+  function syncSound() { $("#bSound").setAttribute("aria-pressed", String(soundOn)); $("#soundWave").style.display = soundOn ? "" : "none"; }
+
+  // resim seçimi
+  const fileIn = $("#file"), drop = $("#drop");
+  $("#bUpload").onclick = () => fileIn.click();
+  drop.onclick = () => fileIn.click();
+  drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileIn.click(); } };
+  fileIn.onchange = () => { loadFile(fileIn.files[0]); fileIn.value = ""; };
+  ["dragenter", "dragover"].forEach(t => window.addEventListener(t, e => { e.preventDefault(); if (!$("#setupBox").hidden) drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(t => window.addEventListener(t, e => { e.preventDefault(); if (t === "drop" || e.relatedTarget === null) drop.classList.remove("over"); }));
+  window.addEventListener("drop", e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) loadFile(f); });
+  window.addEventListener("paste", e => {
+    const it = e.clipboardData ? [...e.clipboardData.items].find(i => i.kind === "file" && /^image\//.test(i.type)) : null;
+    if (it) { e.preventDefault(); loadFile(it.getAsFile()); }
+  });
+  document.querySelectorAll(".thumb").forEach(b => {
+    const key = b.dataset.sample;
+    samples[key] = key === "sunset" ? sampleSunset() : sampleMosaic();
+    b.querySelector("img").src = samples[key].toDataURL("image/jpeg", 0.7);
+    b.onclick = () => setSource(samples[key], key === "sunset" ? "Örnek · Gün batımı" : "Örnek · Mozaik", key);
+  });
+
+  let rsTimer = 0;
+  new ResizeObserver(() => { clearTimeout(rsTimer); rsTimer = setTimeout(fitBoard, 60); }).observe(stage);
+
+  /* ================= Ses ================= */
+  let actx = null;
+  function audio() {
+    if (!soundOn) return null;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+    } catch (e) { actx = null; }
+    return actx;
+  }
+  function tone(freq, t, dur, type, vol, to) {
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur * 0.8);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function play(kind) {
+    if (!soundOn || !audio()) return;
+    const t = actx.currentTime;
+    if (kind === "flip") tone(700, t, 0.07, "triangle", 0.12, 1100);
+    else if (kind === "match") { tone(660, t, 0.18, "sine", 0.18); tone(990, t + 0.08, 0.25, "sine", 0.16); }
+    else if (kind === "miss") tone(220, t, 0.22, "triangle", 0.12, 150);
+    else if (kind === "win") [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, t + i * 0.12, 0.6, "sine", 0.16));
+  }
+
+  /* ================= Başlangıç ================= */
+  syncSound();
+  setSource(samples.sunset, "Örnek · Gün batımı", "sunset");
+  requestAnimationFrame(() => newGame());   // açılışta oyun hazır, ilk karta tıklayınca süre başlar
+})();
+</script>
+</body>
+</html>
